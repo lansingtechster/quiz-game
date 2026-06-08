@@ -1,0 +1,1 @@
+You have access to the Playwright MCP. Whenever you make changes to the code you should verify that the site still works by using Playwright.
