@@ -13,15 +13,24 @@ let currentQuestion = 0;
 let selectedOption = null;
 let score = 0;
 let quizComplete = false;
+let answerTimeout = null;
+
+function clearAutoAdvance() {
+  if (answerTimeout !== null) {
+    clearTimeout(answerTimeout);
+    answerTimeout = null;
+  }
+}
 
 function startQuiz() {
+  clearAutoAdvance();
   currentQuestion = 0;
   score = 0;
   selectedOption = null;
   quizComplete = false;
   updateStatus();
   loadQuestion();
-  feedbackEl.textContent = 'Choose an answer and press Check.';
+  feedbackEl.textContent = 'Tap an answer to submit instantly.';
   nextButton.disabled = true;
   checkButton.disabled = false;
   quizContent.classList.remove('result-screen');
@@ -52,13 +61,13 @@ function loadQuestion() {
 }
 
 function selectOption(button, optionIndex) {
-  if (checkButton.disabled) return;
+  if (quizComplete || checkButton.disabled) return;
   selectedOption = optionIndex;
   optionsEl.querySelectorAll('.option-button').forEach((btn) => {
     btn.classList.remove('selected');
   });
   button.classList.add('selected');
-  feedbackEl.textContent = 'Now press Check Answer to see if you are right.';
+  showResult();
 }
 
 function checkAnswer(question, selectedIndex) {
@@ -75,6 +84,13 @@ function incrementScore(isCorrect) {
 function showResult() {
   const question = quizData[currentQuestion];
   const buttons = optionsEl.querySelectorAll('.option-button');
+
+  if (selectedOption === null) {
+    feedbackEl.innerHTML = '<strong>Oops!</strong> Please choose an answer before checking.';
+    buttons.forEach((button) => (button.disabled = false));
+    return;
+  }
+
   buttons.forEach((button) => {
     const index = Number(button.dataset.index);
     button.disabled = true;
@@ -83,16 +99,10 @@ function showResult() {
     if (index === question.answer) {
       button.classList.add('correct');
     }
-    if (selectedOption !== null && index === selectedOption && index !== question.answer) {
+    if (index === selectedOption && index !== question.answer) {
       button.classList.add('incorrect');
     }
   });
-
-  if (selectedOption === null) {
-    feedbackEl.innerHTML = '<strong>Oops!</strong> Please choose an answer before checking.';
-    buttons.forEach((button) => (button.disabled = false));
-    return;
-  }
 
   const isCorrect = checkAnswer(question, selectedOption);
 
@@ -105,10 +115,18 @@ function showResult() {
   }
 
   checkButton.disabled = true;
-  nextButton.disabled = false;
+  nextButton.disabled = true;
+
+  clearAutoAdvance();
+  if (currentQuestion >= quizData.length - 1) {
+    answerTimeout = setTimeout(showFinalResults, 1500);
+  } else {
+    answerTimeout = setTimeout(nextQuestion, 1500);
+  }
 }
 
 function nextQuestion() {
+  clearAutoAdvance();
   currentQuestion += 1;
   selectedOption = null;
   if (currentQuestion >= quizData.length) {
@@ -116,7 +134,8 @@ function nextQuestion() {
     return;
   }
   loadQuestion();
-  feedbackEl.textContent = 'Choose an answer and press Check.';
+  updateStatus();
+  feedbackEl.textContent = 'Tap an answer to submit instantly.';
   nextButton.disabled = true;
   checkButton.disabled = false;
 }
